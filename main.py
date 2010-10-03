@@ -52,6 +52,7 @@ original_id = parser.get(sec, 'original_id')
 sec = 'bot'
 tweet_type = int(parser.get(sec, 'tweet_type'))
 markov = MarkovChains()
+bot_name = parser.get(sec, 'screen_name') #Hemus
 
 api = twoauth.api(consumer_key,
                   consumer_secret,
@@ -70,6 +71,10 @@ def parse_tweet(text):
     reply = re.compile(u'@[\S]+')
     hashtag = re.compile(u'#[\S]+')
     url = re.compile(r's?https?://[-_.!~*\'()a-zA-Z0-9;/?:@&=+$,%#]+', re.I)
+
+    #Hemus
+    retweet = re.compile(u'RT\s@[\S]+') 
+    text = retweet.sub('', text)
 
     text = reply.sub('', text)
     text = hashtag.sub('', text)
@@ -132,35 +137,87 @@ class ReplyTweetHandler(webapp.RequestHandler):
     def get(self):
         mentions = api.mentions(since_id=self.get_sinceid())
 
-        reply_start = re.compile(u'(@.+?)\s', re.I | re.U)
-
-        last_tweet = ''
+#        reply_start = re.compile(u'(@.+?)\s', re.I | re.U)
 
         reply_temp_defeated = DoReply.get_by_key_name('id')
         if reply_temp_defeated is None:
             DoReply(key_name='id', flg=False).put()
 
         if mentions is not None:
+            last_since_id = mentions[len(mentions)-1]['id']
+            self.set_sinceid(last_since_id)
+
             for status in mentions:
                 screen_name = status['user']['screen_name']
-
                 tweet = get_tweet(True)
-                while tweet == last_tweet:
-                    tweet = get_tweet(True)
-                last_tweet = tweet
                 tweet = "@%s %s" %(screen_name, tweet)
-
                 last_since_id = status['id']
-                self.set_sinceid(last_since_id)
-
                 if (not reply_temp_defeated.flg):
                     api.status_update(tweet, in_reply_to_status_id=last_since_id)
-            
+
+"""
+added code : @HemusAran
+Auto Reply
+"""
+class AutoReplyTweetHandler(webapp.RequestHandler):
+    def get_sinceid(self):
+        since_id = memcache.get('tl_since_id')
+        if since_id is None:
+            since = Since.get_by_key_name('tl_since_id')
+            if since is not None:
+                since_id = since.id
+        return since_id
+    
+    def set_sinceid(self, since_id):
+        memcache.set('tl_since_id', since_id)
+        Since(key_name='tl_since_id', id=int(since_id)).put()
+
+    def isReply(self, status):
+        global bot_name
+        if status['text'].find("RT") != -1:
+            return 0
+        if status['text'].find("@") != -1:
+            return 0
+        if status['user']['screen_name'] == bot_name:
+            return 0
+        return 1
+
+    def auto_tweet(self, status, hitkey, sentence_text, percent):
+        text = status['text']
+        hit = 0
+        for key in hitkey:
+            if text.find(key) != -1:
+                hit = 1
+                break
+ 
+        if hit == 1:
+            rand = random.randint(1,100)
+            if rand <= percent:
+                last_since_id = status['id']
+                screen_name = status['user']['screen_name']
+                tweet = tweet_randomly_from_text(sentence_text)
+                tweet = "@%s %s" %(screen_name, tweet)
+                api.status_update(tweet, in_reply_to_status_id=last_since_id)
+                return 1
+        return 0
+
+    def get(self):
+        lUnko = ['unko', u'うんこ', u'ウンコ']
+        tweets = api.home_timeline(since_id=self.get_sinceid(), count=200)
+
+        if tweets is not None:
+            last_since_id = tweets[len(tweets)-1]['id']
+            self.set_sinceid(last_since_id)
+
+            for status in tweets:
+                if self.isReply(status) == 0:
+                    continue
+                if self.auto_tweet(status, lUnko, 'unko.txt', 100) == 1:
+                    continue
 
 class SinceIdHandler(webapp.RequestHandler):
     def get(self):
         self.response.out.write(str(memcache.get('since_id')))
-
 
 class MainHandler(webapp.RequestHandler):
     def get(self):
@@ -289,7 +346,16 @@ return tweet_randomly_from_text('sentence.txt')
 =====
 """
 
-def get_tweet(_reply=False):
+last_tweet = ''
+def get_tweet(_reply=False): #Hemus
+    global last_tweet
+    tweet = get_tweet_sub(_reply)
+    while tweet == last_tweet:
+        tweet = get_tweet_sub(_reply)
+    last_tweet = tweet
+    return tweet
+
+def get_tweet_sub(_reply=False): #Hemus
     if _reply:
         if tweet_type == USE_FILE:
             return tweet_randomly_from_text('sentence.txt')
@@ -315,21 +381,12 @@ def tweet_randomly_from_text(text):
             sentences.append('\n'.join(sentence))
     return random.choice(sentences)
 
-class OnakaSuitaHandler(webapp.RequestHandler):
-    ## TLを監視して「おなかすいた」が見つかったら反応する
-    tweets = api.home_timeline()
-    if tweets is not None:
-        for status in tweets:
-            tweet = status['text']
-
-            if (tweet.find(u'おなかすいた') > 0):
-                api.status_update('おれもおれも')
-
 
 def main():
     application = webapp.WSGIApplication(
             [('/tweet', PostTweetHandler),
             ('/reply', ReplyTweetHandler),
+            ('/autoreply', AutoReplyTweetHandler), #Hemus
             ('/since_id', SinceIdHandler),
             ('/task/talk', ApiDbSentenceTalkTask),
             ('/learn_task', ApiDbSentenceLearnTask),
@@ -339,7 +396,6 @@ def main():
             ('/task_alllearn', LearnTweetAllTask),
             ('/settings', SettingHandler),
             ('/', MainHandler),
-            ('/onakasuita', OnakaSuitaHandler),
             ],
     debug=True)
     util.run_wsgi_app(application)

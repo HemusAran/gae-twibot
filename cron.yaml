@@ -14,3 +14,9 @@ cron:
   url: /learn
   schedule: every 24 hours
   timezone: Asia/Tokyo
+
+# 自動リプライ（特定の言葉に反応）
+- description: autoreply
+  url: /autoreply
+  schedule: every 5 minutes
+
