@@ -88,6 +88,16 @@ sentence.txt に書かれた文をランダムにツイートします。
     %
     あつい
 
+## HemusAran変更・追加
+
+### Timelineから自動reply
+
+Timelineから特定の文字列に反応して自動でリプライします。
+特定も文字列、リプライするsentenceテキストの指定など可能。
+リプライする確率の設定もできます。
+main.pyのAutoReplyTweetHandlerクラスを参照。
+
+
 ## ライセンス
 
 The MIT License. See LICENSE for details.
