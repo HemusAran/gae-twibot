@@ -158,6 +158,7 @@ class GQuery2(object):
             obj = []
         if len(obj) < 100:
             text = self.make_sentence()
+            obj = memcache.get('sentences') # Hemus add
             obj.append(text)
             memcache.set('sentences', obj)
 

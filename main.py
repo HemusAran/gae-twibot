@@ -137,8 +137,6 @@ class ReplyTweetHandler(webapp.RequestHandler):
     def get(self):
         mentions = api.mentions(since_id=self.get_sinceid())
 
-#        reply_start = re.compile(u'(@.+?)\s', re.I | re.U)
-
         reply_temp_defeated = DoReply.get_by_key_name('id')
         if reply_temp_defeated is None:
             DoReply(key_name='id', flg=False).put()
@@ -157,7 +155,7 @@ class ReplyTweetHandler(webapp.RequestHandler):
 
 """
 added code : @HemusAran
-Auto Reply
+Timelineを取得して特定ワードに自動返信
 """
 class AutoReplyTweetHandler(webapp.RequestHandler):
     def get_sinceid(self):
@@ -329,6 +327,19 @@ class LearnTweetAllTask(webapp.RequestHandler):
             for sentence in sentences:
                 analyse_sentence_to_db(sentence)
 
+"""
+added code : @HemusAran
+マルコフ連鎖で生成された文字列の表示
+"""
+class CheckSentenceHandler(webapp.RequestHandler):
+    def get(self):
+        objs = memcache.get('sentences')
+        if objs is not None:
+            for obj in objs:
+                self.response.out.write(obj + '<BR>')
+        else:
+            self.response.out.write('NULL !!')
+
 
 ### ここまでマルコフ連鎖用 ###
 """
@@ -346,16 +357,7 @@ return tweet_randomly_from_text('sentence.txt')
 =====
 """
 
-last_tweet = ''
-def get_tweet(_reply=False): #Hemus
-    global last_tweet
-    tweet = get_tweet_sub(_reply)
-    while tweet == last_tweet:
-        tweet = get_tweet_sub(_reply)
-    last_tweet = tweet
-    return tweet
-
-def get_tweet_sub(_reply=False): #Hemus
+def get_tweet(_reply=False):
     if _reply:
         if tweet_type == USE_FILE:
             return tweet_randomly_from_text('sentence.txt')
@@ -395,6 +397,7 @@ def main():
             ('/learn_tweet_all', LearnTweetAllHandler),
             ('/task_alllearn', LearnTweetAllTask),
             ('/settings', SettingHandler),
+            ('/check_sentence', CheckSentenceHandler),
             ('/', MainHandler),
             ],
     debug=True)
