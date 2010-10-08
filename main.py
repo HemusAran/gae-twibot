@@ -62,11 +62,6 @@ api = twoauth.api(consumer_key,
 class DoReply(db.Model):
     flg = db.BooleanProperty()
 
-"""
-sentence.txt を読み込む
-"""
-sentences = []
-
 def parse_tweet(text):
     reply = re.compile(u'@[\S]+')
     hashtag = re.compile(u'#[\S]+')
@@ -201,6 +196,7 @@ class AutoReplyTweetHandler(webapp.RequestHandler):
 
     def get(self):
         lUnko = ['unko', u'うんこ', u'ウンコ']
+        lSleep = [u'寝る', u'眠る', u'寝ます', u'眠ります', u'おやすみ']
         tweets = api.home_timeline(since_id=self.get_sinceid(), count=200)
 
         if tweets is not None:
@@ -211,6 +207,8 @@ class AutoReplyTweetHandler(webapp.RequestHandler):
                 if self.isReply(status) == 0:
                     continue
                 if self.auto_tweet(status, lUnko, 'unko.txt', 100) == 1:
+                    continue
+                if self.auto_tweet(status, lSleep, 'sleep.txt', 50) == 1:
                     continue
 
 class SinceIdHandler(webapp.RequestHandler):
@@ -340,6 +338,13 @@ class CheckSentenceHandler(webapp.RequestHandler):
         else:
             self.response.out.write('NULL !!')
 
+class TestCodeHandler(webapp.RequestHandler):
+    def get(self):
+        text = tweet_randomly_from_text('unko.txt')
+        self.response.out.write(text+'<BR>')
+        test = tweet_randomly_from_text('sleep.txt')
+        self.response.out.write(test+'<BR>')
+
 
 ### ここまでマルコフ連鎖用 ###
 """
@@ -369,8 +374,15 @@ def get_tweet(_reply=False):
         elif tweet_type == USE_MARKOV:
             return tweet_from_db() 
 
+#sentences = []
+#自動reply導入による複数テキスト記憶(連想配列)へ変更 HemusAran
+dict = {}
 def tweet_randomly_from_text(text):
-    if sentences == []:
+    global dict
+    sentences = dict.get('text')
+
+    if sentences is None:
+        sentences = []
         sentence = []
         for line in open(text).read().splitlines():
             if line.startswith('%'):
@@ -381,6 +393,8 @@ def tweet_randomly_from_text(text):
                 sentence.append(line)
         if sentence != []:
             sentences.append('\n'.join(sentence))
+        dict[text] = sentences
+
     return random.choice(sentences)
 
 
@@ -397,7 +411,8 @@ def main():
             ('/learn_tweet_all', LearnTweetAllHandler),
             ('/task_alllearn', LearnTweetAllTask),
             ('/settings', SettingHandler),
-            ('/check_sentence', CheckSentenceHandler),
+            ('/check_sentence', CheckSentenceHandler), #Hemus
+            ('/testcode', TestCodeHandler), #Hemus
             ('/', MainHandler),
             ],
     debug=True)
