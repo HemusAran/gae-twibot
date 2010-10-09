@@ -141,6 +141,9 @@ class ReplyTweetHandler(webapp.RequestHandler):
             self.set_sinceid(last_since_id)
 
             for status in mentions:
+                rand = random.randint(1,100)
+                if rand <= 10: #1割の確率で返信しない
+                    continue
                 screen_name = status['user']['screen_name']
                 tweet = get_tweet(True)
                 tweet = "@%s %s" %(screen_name, tweet)
@@ -374,7 +377,7 @@ def get_tweet(_reply=False):
         elif tweet_type == USE_MARKOV:
             return tweet_from_db() 
 
-#sentences = []
+
 #自動reply導入による複数テキスト記憶(連想配列)へ変更 HemusAran
 dict = {}
 def tweet_randomly_from_text(text):
