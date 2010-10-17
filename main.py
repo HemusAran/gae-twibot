@@ -220,7 +220,7 @@ class SinceIdHandler(webapp.RequestHandler):
 
 class MainHandler(webapp.RequestHandler):
     def get(self):
-        self.response.out.write('Hello World!')
+        self.response.out.write(template.render('views/index.html', {}))
 
 class SettingHandler(webapp.RequestHandler):
     def get(self):
@@ -330,7 +330,8 @@ class LearnTweetAllTask(webapp.RequestHandler):
 
 """
 added code : @HemusAran
-マルコフ連鎖で生成された文字列の表示
+CheckSentenceHandler マルコフ連鎖で生成された文字列の表示
+MakeSentenceHandler マルコフ連鎖での生成を促す（100個になるように）
 """
 class CheckSentenceHandler(webapp.RequestHandler):
     def get(self):
@@ -341,12 +342,18 @@ class CheckSentenceHandler(webapp.RequestHandler):
         else:
             self.response.out.write('NULL !!')
 
-class TestCodeHandler(webapp.RequestHandler):
+class MakeSentenceHandler(webapp.RequestHandler):
     def get(self):
-        text = tweet_randomly_from_text('unko.txt')
-        self.response.out.write(text+'<BR>')
-        test = tweet_randomly_from_text('sleep.txt')
-        self.response.out.write(test+'<BR>')
+        num = 100
+        objs = memcache.get('sentences')
+        if objs is not None:
+            num = num - len(objs)
+        while True:
+            if num == 0:
+                break
+            num = num - 1
+            markov.load_db('gquery2')
+            taskqueue.add(url='/task/talk')
 
 
 ### ここまでマルコフ連鎖用 ###
@@ -415,7 +422,7 @@ def main():
             ('/task_alllearn', LearnTweetAllTask),
             ('/settings', SettingHandler),
             ('/check_sentence', CheckSentenceHandler), #Hemus
-            ('/testcode', TestCodeHandler), #Hemus
+            ('/make_sentence', MakeSentenceHandler), #Hemus
             ('/', MainHandler),
             ],
     debug=True)

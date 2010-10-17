@@ -151,14 +151,13 @@ class GQuery2(object):
         if text:
             self.register_chain(text)
 
+    def store_new_sentence(self): 
+        text = self.make_sentence() # Hemus
 
-    def store_new_sentence(self):
         obj = memcache.get('sentences')
         if obj is None:
             obj = []
         if len(obj) < 100:
-            text = self.make_sentence()
-            obj = memcache.get('sentences') # Hemus add
             obj.append(text)
             memcache.set('sentences', obj)
 
