@@ -153,11 +153,11 @@ class GQuery2(object):
 
 
     def store_new_sentence(self):
-        text = self.make_sentence()
         obj = memcache.get('sentences')
         if obj is None:
             obj = []
         if len(obj) < 100:
+            text = self.make_sentence()
             obj.append(text)
             memcache.set('sentences', obj)
 

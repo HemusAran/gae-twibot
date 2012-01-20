@@ -20,3 +20,8 @@ cron:
   url: /autoreply
   schedule: every 5 minutes
 
+# マルコフ連鎖が100溜まってるか時々チェック
+- description: make_sentence
+  url: /make_sentence
+  schedule: every 1 hours
+

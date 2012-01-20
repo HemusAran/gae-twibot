@@ -151,9 +151,9 @@ class GQuery2(object):
         if text:
             self.register_chain(text)
 
+    def store_new_sentence(self): 
+        text = self.make_sentence() # Hemus
 
-    def store_new_sentence(self):
-        text = self.make_sentence()
         obj = memcache.get('sentences')
         if obj is None:
             obj = []
